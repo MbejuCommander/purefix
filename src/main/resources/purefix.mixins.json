@@ -1,0 +1,7 @@
+{
+  "required": true,
+  "package": "dev.purefix.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": ["ConnectionMixin", "ContainerScreenMixin", "PayloadCodecMixin", "CustomPayloadMixin"],
+  "injectors": {"defaultRequire": 1}
+}

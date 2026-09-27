@@ -1,0 +1,55 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version '1.17.21'
+}
+version = '1.1.0'
+group = 'dev.purefix'
+repositories { maven { url = 'https://maven.terraformersmc.com/releases/' }; mavenCentral() }
+dependencies {
+    minecraft 'com.mojang:minecraft:26.3'
+    implementation 'net.fabricmc:fabric-loader:0.19.5'
+    implementation 'net.fabricmc.fabric-api:fabric-api:0.161.0+26.3'
+    implementation 'com.terraformersmc:modmenu:21.0.0'
+    testImplementation platform('org.junit:junit-bom:5.14.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+tasks.withType(JavaCompile).configureEach { options.release = 25; options.encoding = 'UTF-8' }
+java { sourceCompatibility = JavaVersion.VERSION_25; targetCompatibility = JavaVersion.VERSION_25; withSourcesJar() }
+processResources { inputs.property 'version', project.version; filesMatching('fabric.mod.json') { expand version: project.version } }
+test { useJUnitPlatform() }
+jar { from('LICENSE') { rename { "${it}_purefix" } } }
+
+// A separate development-only mod exercises real Minecraft screens and mixin loading.
+// Its classes and metadata are never included in the distributable PureFix jar.
+sourceSets {
+    smoke {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+}
+configurations {
+    smokeImplementation.extendsFrom implementation
+    smokeRuntimeOnly.extendsFrom runtimeOnly
+}
+loom {
+    mods {
+        purefix { sourceSet sourceSets.main }
+        purefix_smoke { sourceSet sourceSets.smoke }
+    }
+    runs {
+        smokeClient {
+            client()
+            source sourceSets.smoke
+            runDir 'run-smoke'
+            vmArg '-Dmixin.debug.countInjections=true'
+        }
+    }
+}
+tasks.named('runSmokeClient') {
+    doLast {
+        def log = file('run-smoke/logs/latest.log')
+        if (!log.exists() || !log.text.contains('PUREFIX_SMOKE_PASS') || log.text.contains('PUREFIX_SMOKE_FAIL')) {
+            throw new GradleException('PureFix client smoke test did not pass; inspect run-smoke/logs/latest.log')
+        }
+    }
+}

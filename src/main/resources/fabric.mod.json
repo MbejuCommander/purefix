@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "purefix",
+  "version": "${version}",
+  "name": "PureFix",
+  "description": "Client-side recovery tools for multiplayer staff: EnderFix, SpectateFix, and local server saves.",
+  "authors": ["PureFix"],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["dev.purefix.PureFix"],
+    "modmenu": ["dev.purefix.ui.PureFixModMenu"]
+  },
+  "mixins": ["purefix.mixins.json"],
+  "depends": {"fabricloader": ">=0.19.5", "minecraft": "26.3", "java": ">=25", "fabric-api": "*"},
+  "suggests": {"modmenu": ">=21.0.0"}
+}
