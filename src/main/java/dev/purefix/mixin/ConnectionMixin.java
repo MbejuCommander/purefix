@@ -11,6 +11,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ClientPacketListener.class)
 public abstract class ConnectionMixin {
+    @Inject(method = "handleGameEvent", at = @At("TAIL"))
+    private void purefix$gameMode(ClientboundGameEventPacket packet, CallbackInfo ci) {
+        if (packet.getEvent() == ClientboundGameEventPacket.CHANGE_GAME_MODE
+            && PureFix.INSTANCE != null && Minecraft.getInstance().isSameThread()) PureFix.INSTANCE.gameModeChanged();
+    }
     @Inject(method = "sendCommand", at = @At("HEAD"), cancellable = true)
     private void purefix$command(String command, CallbackInfo ci) {
         if (PureFix.INSTANCE != null && !PureFix.INSTANCE.outgoing(command)) ci.cancel();

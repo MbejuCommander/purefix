@@ -20,9 +20,13 @@ public final class Store {
     public void load() {
         if (!Files.exists(path)) return;
         try {
-            Data loaded = GSON.fromJson(Files.readString(path), Data.class);
+            var json = com.google.gson.JsonParser.parseString(Files.readString(path));
+            Data loaded = GSON.fromJson(json, Data.class);
             if (loaded == null) throw new IllegalArgumentException("Empty data file.");
             loaded.validate();
+            // The removed exit list identifies an older configuration. Migrate its old delay default once.
+            if (json.getAsJsonObject().has("settings") && json.getAsJsonObject().getAsJsonObject("settings").has("exitCommands")
+                && loaded.settings.joinDelayTicks == 10) loaded.settings.joinDelayTicks = 0;
             // Upgrade only the untouched 1.0 default list; preserve deliberate user customizations.
             if (loaded.settings.restoreCommands.equals(java.util.List.of("/inventoryrollback restore {player}", "/ir restore {player}")))
                 loaded.settings.restoreCommands = new java.util.ArrayList<>(Data.DEFAULT_RESTORE_COMMANDS);

@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.0 - 2026-09-27
+
+- Replace command-based exit confirmation with server game-mode events. A tracked session clears after spectator mode changes to a different mode, including when the observed player disconnects and the server restores survival.
+- Keep the original return when spectate commands are repeated or targets change. Bare exit commands pass through. Already tracked sessions and spectator-mode commands are not blocked by missing world IDs.
+- Detect mode changes independently of F1 and spectator-menu visibility, without inventory scans or polling timers. Disconnects/crashes retain the previously saved origin.
+- Set the default join delay to 0 ticks. Migrate the old 10-tick default once; retain other configured delays.
+- Add MapModCompanion detection ON/OFF, default ON. OFF uses the seed fallback immediately, including known profile associations, and disables the Xaero-specific recovery check.
+- Add setting instructions and the villager negative-response sound to the waiting-for-world-ID message.
+- Remove obsolete exit-command settings, update the guide, and add lifecycle, migration, and fallback regression coverage.
+
 ## 1.1.0 - 2026-09-27
 
 ### Added

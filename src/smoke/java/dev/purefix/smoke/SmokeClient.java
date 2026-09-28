@@ -49,7 +49,13 @@ public final class SmokeClient implements ClientModInitializer {
                     }
                     case 6 -> { shot(mc); press(mc, "Cancel"); }
                     case 7 -> { press(mc, "Back"); press(mc, "SpectateFix"); }
-                    case 8 -> { shot(mc); press(mc, ">"); }
+                    case 8 -> {
+                        boolean enabled = PureFix.INSTANCE.settings().mapModCompanionEnabled;
+                        press(mc, "MapModCompanion detection: " + (enabled ? "ON" : "OFF"));
+                        if (PureFix.INSTANCE.settings().mapModCompanionEnabled == enabled) throw new AssertionError("Map detection toggle failed");
+                        press(mc, "MapModCompanion detection: " + (enabled ? "OFF" : "ON"));
+                        shot(mc); press(mc, ">");
+                    }
                     case 9 -> { shot(mc); press(mc, "Back"); press(mc, "Server Saves"); }
                     case 10 -> { shot(mc); press(mc, "Back"); press(mc, "Help & storage"); }
                     case 11 -> { shot(mc); System.out.println("PUREFIX_SMOKE_PASS: shared Xaero decoder observation, mixins, themed menus, Reset, editor, SpectateFix, Server Saves."); }

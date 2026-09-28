@@ -27,6 +27,7 @@ public final class PureFix implements ClientModInitializer {
     public final Store store = new Store(FabricLoader.getInstance().getConfigDir().resolve("purefix"));
     private final Minecraft mc = Minecraft.getInstance();
     private final WorldIdentity identity = new WorldIdentity();
+    private final SpectateSession session = new SpectateSession();
     private String fingerprint = "", selectedId = "", lastCapture = "";
     private final Set<String> eligible = new HashSet<>(), attempted = new HashSet<>();
     private long tick, restoreDeadline, lastPearlTick = -100;
@@ -50,6 +51,7 @@ public final class PureFix implements ClientModInitializer {
     }
     public Data.Settings settings() { return store.data.settings; }
     public boolean multiplayer() { return mc.player != null && mc.level != null && mc.getConnection() != null && !mc.isLocalServer() && mc.getCurrentServer() != null; }
+    private boolean spectating() { return mc.gameMode != null && mc.gameMode.isSpectator(); }
     public String address() { return multiplayer() ? Rules.address(mc.getCurrentServer().ip) : ""; }
     public String dimension() { return multiplayer() ? mc.level.dimension().identifier().toString() : ""; }
     public String fingerprint() { return fingerprint; }
@@ -58,11 +60,14 @@ public final class PureFix implements ClientModInitializer {
     public boolean save() { boolean ok = store.save(); if (!ok) message(store.error); return ok; }
     private void resetConnection() {
         identity.reset();
+        session.reset();
         fingerprint = ""; selectedId = ""; lastCapture = ""; eligible.clear(); attempted.clear();
         awaiting = null; positionReady = false; readyTicks = 0; restoreDeadline = 0; menuVerified = false;
     }
     /** Seed is the server-provided obfuscated seed, not the private world seed. */
     public void observeWorld(long seed) {
+        // Respawn may establish spectator mode; a world transition alone must never clear a saved return.
+        if (session.armed() && spectating()) session.modeChanged(true);
         identity.changeWorld(seed, tick, store.data.xaeroNetworks.contains(address()));
         fingerprint = ""; selectedId = ""; lastCapture = ""; readyTicks = 0; positionReady = false;
         restoreDeadline = 0; menuVerified = false;
@@ -74,10 +79,21 @@ public final class PureFix implements ClientModInitializer {
         updateIdentity();
     }
     private void updateIdentity() {
-        String next = identity.fingerprint(tick);
+        String next = settings().mapModCompanionEnabled ? identity.fingerprint(tick) : identity.fallback();
         if (!next.equals(fingerprint)) {
             fingerprint = next; selectedId = ""; lastCapture = ""; readyTicks = 0;
         }
+        // Record a fallback association only while the server has actually confirmed this Xaero ID.
+        if (settings().mapModCompanionEnabled && XaeroProtocol.isIdentity(fingerprint)) {
+            Data.Server current = currentServer();
+            if (current != null && !identity.fallback().equals(current.fallbackFingerprint)) {
+                current.fallbackFingerprint = identity.fallback(); save();
+            }
+        }
+    }
+    public void setMapModCompanionEnabled(boolean enabled) {
+        settings().mapModCompanionEnabled = enabled;
+        if (multiplayer()) updateIdentity();
     }
     public String detectionStatus() {
         if (!multiplayer()) return "Join a multiplayer server to check world detection.";
@@ -90,6 +106,7 @@ public final class PureFix implements ClientModInitializer {
     }
     public String detectionSummary() {
         if (!multiplayer()) return "Not connected";
+        if (!settings().mapModCompanionEnabled) return "Map detection OFF | Seed fallback";
         if (XaeroProtocol.isIdentity(fingerprint)) return "World ID: " + fingerprint.substring(XaeroProtocol.PREFIX.length());
         return fingerprint.isBlank() ? "Waiting for world ID" : "Seed fallback";
     }
@@ -101,8 +118,12 @@ public final class PureFix implements ClientModInitializer {
             .filter(s -> s.id.equals(selectedId) && Rules.address(s.address).equals(address())).findFirst().orElse(null);
         if (fingerprint.isBlank()) return null;
         List<Data.Server> matches = store.data.servers.stream()
-            .filter(s -> Rules.address(s.address).equals(address()) && s.fingerprint.equals(fingerprint)).toList();
+            .filter(s -> Rules.address(s.address).equals(address()) && matchesIdentity(s)).toList();
         return matches.size() == 1 ? matches.getFirst() : null;
+    }
+    private boolean matchesIdentity(Data.Server server) {
+        return server.fingerprint.equals(fingerprint) || (!settings().mapModCompanionEnabled
+            && !fingerprint.isBlank() && server.fallbackFingerprint.equals(fingerprint));
     }
     public void useServer(Data.Server server) {
         if (!multiplayer() || !Rules.address(server.address).equals(address())) throw new IllegalArgumentException("Connect to this server address first.");
@@ -116,6 +137,7 @@ public final class PureFix implements ClientModInitializer {
         if (fingerprint.isBlank()) throw new IllegalArgumentException("Waiting for a current world ID. Try again after world detection finishes.");
         Data.Server server = new Data.Server(); server.address = address(); server.name = mc.getCurrentServer().name;
         server.subserver = "New subserver"; server.fingerprint = fingerprint;
+        server.fallbackFingerprint = identity.fallback();
         server.observedDimensions.add(dimension());
         return server;
     }
@@ -129,7 +151,7 @@ public final class PureFix implements ClientModInitializer {
         Data.Server existing = currentServer();
         if (existing != null) { existing.lastSeen = System.currentTimeMillis(); existing.observedDimensions.add(dimension()); save(); return; }
         // A duplicate fingerprint means manual profiles are present; never invent a third one.
-        if (store.data.servers.stream().anyMatch(s -> Rules.address(s.address).equals(address()) && s.fingerprint.equals(fingerprint))) return;
+        if (store.data.servers.stream().anyMatch(s -> Rules.address(s.address).equals(address()) && matchesIdentity(s))) return;
         Data.Server server = draftServer();
         server.subserver = XaeroProtocol.isIdentity(fingerprint) ? "World " + fingerprint.substring(XaeroProtocol.PREFIX.length())
             : fingerprint.equals("unknown") ? "Unidentified subserver" : "Detected " + fingerprint.substring(5);
@@ -142,7 +164,7 @@ public final class PureFix implements ClientModInitializer {
         // Pending returns are intentionally retained; deleting a label must not discard recovery data.
         save();
     }
-    public void forget(Data.Pending pending) { store.data.pending.remove(pending); eligible.remove(pending.id); if (awaiting == pending) awaiting = null; save(); }
+    public void forget(Data.Pending pending) { store.data.pending.remove(pending); eligible.remove(pending.id); if (awaiting == pending) awaiting = null; if (session.pendingId().equals(pending.id)) session.reset(); save(); }
     public void retry(Data.Pending pending) { eligible.add(pending.id); attempted.remove(pending.id); readyTicks = 0; }
 
     /** Called before vanilla sends the command. False cancels only an unsafe, unsaved spectate entry. */
@@ -153,13 +175,19 @@ public final class PureFix implements ClientModInitializer {
         }
         if (!settings().spectateEnabled) return true;
         boolean entry = settings().spectateCommands.stream().anyMatch(p -> Rules.matches(p, command));
-        boolean exit = settings().exitCommands.stream().anyMatch(p -> Rules.matches(p, command));
-        if (!entry && !exit) return true;
-        if (fingerprint.isBlank()) { message("Waiting for the current world ID. Spectate command cancelled; try again when detection is ready."); return false; }
+        if (!entry) return true;
+        // Exit/retarget commands must always reach the server; neither clears nor replaces the origin.
+        if (session.armed() || spectating()) return true;
+        updateIdentity();
+        if (fingerprint.isBlank()) {
+            message("Waiting for the current world ID. Spectate entry cancelled. You can disable MapModCompanion detection in PureFix > SpectateFix settings.");
+            mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.VILLAGER_NO, 1f));
+            return false;
+        }
         Data.Server server = currentServer();
-        if (server == null && entry && store.available()) {
+        if (server == null && store.available()) {
             // Explicit spectate use needs a recovery profile even with passive auto-capture disabled.
-            if (store.data.servers.stream().noneMatch(s -> Rules.address(s.address).equals(address()) && s.fingerprint.equals(fingerprint))) {
+            if (store.data.servers.stream().noneMatch(s -> Rules.address(s.address).equals(address()) && matchesIdentity(s))) {
                 server = draftServer(); server.subserver = "Spectate return server"; store.data.servers.add(server);
             }
         }
@@ -167,13 +195,10 @@ public final class PureFix implements ClientModInitializer {
         String serverId = server.id;
         Data.Pending previous = store.data.pending.stream().filter(p -> p.account.equals(account()) && p.serverId.equals(serverId)).findFirst().orElse(null);
         if (previous != null) {
-            // Explicitly repeating a configured spectate/exit command ends the local session.
-            store.data.pending.remove(previous);
-            if (!save()) { store.data.pending.add(previous); return false; }
+            session.arm(previous.id, spectating());
             eligible.remove(previous.id); if (awaiting == previous) awaiting = null;
-            message("Spectate return cleared by your exit command."); return true;
+            return true;
         }
-        if (!entry) return true;
         String world = server.worlds.getOrDefault(dimension(), "");
         if (!Rules.validWorld(world)) { message("Set this dimension's Bukkit world in Server Saves first. Command cancelled."); return false; }
         Data.Pending pending = new Data.Pending(); pending.account = account(); pending.serverId = server.id;
@@ -182,7 +207,29 @@ public final class PureFix implements ClientModInitializer {
         pending.x = mc.player.getX(); pending.y = mc.player.getY(); pending.z = mc.player.getZ();
         store.data.pending.add(pending);
         if (!save()) { store.data.pending.remove(pending); return false; }
+        session.arm(pending.id, false);
         message("Spectate return saved in " + world + "."); return true;
+    }
+    /** Called only after a server CHANGE_GAME_MODE event, never from rendering or disconnect. */
+    public void gameModeChanged() {
+        if (!multiplayer() || !settings().spectateEnabled || !store.available()) return;
+        boolean spectator = spectating();
+        if (!session.armed() && spectator) {
+            Data.Server server = currentServer();
+            if (server != null) store.data.pending.stream()
+                .filter(p -> p.account.equals(account()) && p.serverId.equals(server.id)).findFirst()
+                .ifPresent(p -> session.arm(p.id, true));
+        }
+        if (!session.modeChanged(spectator)) return;
+        Data.Pending pending = store.data.pending.stream()
+            .filter(p -> p.id.equals(session.pendingId()) && p.account.equals(account())).findFirst().orElse(null);
+        session.reset();
+        if (pending == null) return;
+        store.data.pending.remove(pending);
+        if (!save()) { store.data.pending.add(pending); return; }
+        eligible.remove(pending.id); attempted.remove(pending.id);
+        if (awaiting == pending) awaiting = null;
+        message("Spectate ended: your saved return was cleared after the server changed your game mode.");
     }
     private void tick() {
         tick++;
@@ -196,12 +243,13 @@ public final class PureFix implements ClientModInitializer {
         if (awaiting != null) {
             Data.Pending p = awaiting;
             Data.Server current = currentServer();
-            if (current != null && RecoveryPolicy.identityMatches(p, fingerprint)
+            if (current != null && RecoveryPolicy.identityMatches(p, fingerprint, settings().mapModCompanionEnabled)
                 && RecoveryPolicy.arrived(p, account(), current.id, dimension(), positionSerial > awaitingPositionSerial,
                 mc.player.getX(), mc.player.getY(), mc.player.getZ())) {
                 store.data.pending.remove(p);
                 if (!save()) { store.data.pending.add(p); awaiting = null; return; }
                 eligible.remove(p.id); awaiting = null;
+                if (session.pendingId().equals(p.id)) session.reset();
                 if (settings().spectateSound) sound();
                 message("Spectate return completed.");
             } else if (tick > awaitingDeadline) {
@@ -213,7 +261,7 @@ public final class PureFix implements ClientModInitializer {
         Data.Server server = currentServer();
         for (Data.Pending pending : store.data.pending) {
             if (!RecoveryPolicy.canAttempt(pending, server, account(), fingerprint, !selectedId.isBlank(), positionReady,
-                readyTicks, settings().joinDelayTicks, eligible, attempted)) continue;
+                readyTicks, settings().joinDelayTicks, eligible, attempted, settings().mapModCompanionEnabled)) continue;
             attempted.add(pending.id);
             try {
                 send(Rules.render(settings().spectateCommand, pending.location()));

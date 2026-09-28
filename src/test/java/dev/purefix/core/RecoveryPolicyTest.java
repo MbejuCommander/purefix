@@ -32,6 +32,14 @@ class RecoveryPolicyTest {
     @Test void unknownFingerprintRequiresExplicitSelection() {
         assertTrue(RecoveryPolicy.canAttempt(pending, server, "staff", "unknown", true, true, 10, 10, Set.of(pending.id), Set.of()));
     }
+    @Test void mapDetectionOffKeepsAccountProfilePositionAndUnknownSeedGuards() {
+        pending.worldFingerprint = "xaero-worldmap:100";
+        assertTrue(RecoveryPolicy.canAttempt(pending, server, "staff", "seed:a", false, true, 0, 0, Set.of(pending.id), Set.of(), false));
+        assertFalse(RecoveryPolicy.canAttempt(pending, server, "staff", "seed:a", false, false, 0, 0, Set.of(pending.id), Set.of(), false));
+        assertFalse(RecoveryPolicy.canAttempt(pending, server, "other", "seed:a", false, true, 0, 0, Set.of(pending.id), Set.of(), false));
+        assertFalse(RecoveryPolicy.canAttempt(pending, new Data.Server(), "staff", "seed:a", false, true, 0, 0, Set.of(pending.id), Set.of(), false));
+        assertFalse(RecoveryPolicy.canAttempt(pending, server, "staff", "unknown", false, true, 0, 0, Set.of(pending.id), Set.of(), false));
+    }
     @Test void arrivalNeedsNewPacketCorrectWorldAccountServerAndPosition() {
         assertTrue(arrived("staff", server.id, pending.dimension, true, 0, 90, 0));
         assertFalse(arrived("staff", server.id, pending.dimension, false, 0, 90, 0));

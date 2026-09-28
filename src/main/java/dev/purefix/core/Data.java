@@ -13,17 +13,18 @@ public final class Data {
     public Set<String> xaeroNetworks = new HashSet<>();
     public static class Settings {
         public boolean autoCapture = true, enderEnabled = true, enderSound = true, spectateEnabled = true, spectateSound = true;
+        public boolean mapModCompanionEnabled = true;
         public String enderCommand = Rules.TELEPORT, spectateCommand = Rules.TELEPORT;
         public List<String> restoreCommands = new ArrayList<>(DEFAULT_RESTORE_COMMANDS);
         public List<String> spectateCommands = new ArrayList<>(List.of("/s {player}", "/spectate {player}"));
-        public List<String> exitCommands = new ArrayList<>(List.of("/s", "/spectate"));
         public String playerDataTitle = "Player Data", backupTitle = "Main Inventory Backup";
         public String pearlTitle = "Teleport to where this entry was logged.";
-        public int joinDelayTicks = 10;
+        public int joinDelayTicks = 0;
     }
     public static class Server {
         public String id = UUID.randomUUID().toString();
         public String name = "", address = "", subserver = "", fingerprint = "";
+        public String fallbackFingerprint = "";
         public boolean automaticRecovery = true;
         public long lastSeen = System.currentTimeMillis();
         public Set<String> observedDimensions = new LinkedHashSet<>();
@@ -44,13 +45,12 @@ public final class Data {
         Rules.validateTemplate(settings.enderCommand); Rules.validateTemplate(settings.spectateCommand);
         for (String s : settings.restoreCommands) Rules.validateTrigger(s, true);
         for (String s : settings.spectateCommands) Rules.validateTrigger(s, true);
-        for (String s : settings.exitCommands) Rules.validateTrigger(s, false);
         if (settings.playerDataTitle == null || settings.backupTitle == null || settings.pearlTitle == null
             || settings.joinDelayTicks < 0 || settings.joinDelayTicks > 1200) throw new IllegalArgumentException("Invalid settings.");
         Set<String> ids = new HashSet<>();
         for (Server s : servers) {
             if (s == null || s.id == null || !ids.add(s.id) || s.name == null || s.address == null || s.address.isBlank()
-                || s.subserver == null || s.fingerprint == null || s.worlds == null || s.observedDimensions == null) throw new IllegalArgumentException("Invalid server record.");
+                || s.subserver == null || s.fingerprint == null || s.fallbackFingerprint == null || s.worlds == null || s.observedDimensions == null) throw new IllegalArgumentException("Invalid server record.");
             for (var entry : s.worlds.entrySet())
                 if (entry.getKey() == null || !Rules.validWorld(entry.getValue())) throw new IllegalArgumentException("Invalid world mapping.");
         }

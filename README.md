@@ -7,7 +7,7 @@ PureFix is an English-only, **client-side Fabric mod for Minecraft Java 26.3**. 
 ## Installation
 
 1. Install Minecraft **26.3**, Fabric Loader **0.19.5 or newer**, and Java **25 or newer**.
-2. Put `purefix-1.1.0.jar` in your Minecraft instance's `mods` folder. Remove the previous PureFix jar when upgrading; keep your configuration folder.
+2. Put `purefix-1.2.0.jar` in your Minecraft instance's `mods` folder. Remove the previous PureFix jar when upgrading; keep your configuration folder.
 3. Install **Fabric API for 26.3**. This release was built with `0.161.0+26.3`.
 4. Install **Mod Menu for 26.3** to access **Mods > PureFix > Configure**. This release was built with Mod Menu `21.0.0`. Mod Menu is optional: `/purefix` also opens the configuration while connected.
 5. Connect to your multiplayer server. PureFix is not installed on the server.
@@ -103,23 +103,29 @@ Enabled by default, with Enderman teleport sound. Its menu icon uses your curren
 1. Stand at your return point, for example `world_nether`, `0 90 0`.
 2. Run `/s <player>` or `/spectate <player>`.
 3. PureFix writes the original position to disk **before sending the command**. If it cannot safely save, it cancels the spectate command and tells you why.
-4. Repeating a configured spectate command, or using a configured exit command (default `/s` and `/spectate` without arguments), clears the saved return before sending that exit command.
-5. If you disconnect or close Minecraft with a saved return, reconnect to the matching world. PureFix waits for world identification, the initial server position, and a configurable readiness delay (default **10 ticks**, about half a second), then sends:
+4. PureFix watches server game-mode changes. Once spectator mode has been observed for the saved session, a server change to survival, creative, or adventure clears the return. This also covers the observed player disconnecting when your server responds by returning you to survival. Repeating spectate commands preserves the original position; bare `/s` and `/spectate` pass through without clearing anything.
+5. If you disconnect, crash, or close Minecraft before that exit is observed, the return remains on disk. Reconnect to the matching world. PureFix waits for world identification and the initial server position, plus a configurable readiness delay (default **0 ticks**), then sends:
 
 ```text
 /co teleport #world_nether 0 90 0
 ```
 
-Return records are separated by **player UUID and server profile**. A new spectate session in the current connection does not immediately trigger recovery. The mod sends at most one automatic attempt per pending return per connection. It removes the record only after a new server position update places the player within two blocks of the stored coordinates in the stored dimension and matching profile. The sound plays when arrival is confirmed.
+Return records are separated by **player UUID and server profile**. A new spectate session in the current connection does not immediately trigger recovery. The mod sends at most one automatic attempt per pending return per connection. For automatic recovery, it confirms arrival after a new server position update places the player within two blocks of the stored coordinates in the stored dimension and matching profile. The sound plays when arrival is confirmed. An observed normal exit from spectator mode can also clear a saved session without issuing a recovery command.
 
 If no arrival is confirmed within ten seconds, the record remains. Use **SpectateFix > Saved returns > Retry** after logging in or fixing permissions/mappings. **Forget** permanently discards a record after confirmation. Disabling SpectateFix preserves existing saved returns.
 
-You can edit entry patterns, exit patterns, the teleport template, delay, and sound. Patterns match the whole command; `{player}` matches one player-name token. Aliases must be listed separately.
+You can edit entry patterns, the teleport template, delay, and sound. Patterns match the whole command; `{player}` matches one player-name token. Aliases must be listed separately. Exit command patterns were removed in 1.2.0. An older configuration's 10-tick default migrates to 0; other delays are preserved. You can subsequently set any delay from 0 to 1200 ticks.
+
+The mode detector is **event-driven**: it reads Minecraft's local game mode after the server's mode-change packet is applied. F1 and whether the spectator menu is open do not affect it. It does not scan inventory items or the rendered screen, and needs no three-second polling interval. Login, disconnect, and respawn alone never count as exit confirmation.
+
+**MapModCompanion detection** is ON by default. Turn it OFF in SpectateFix to use the seed fallback immediately, without waiting for map announcements. Previously observed profiles can use their stored seed association; ambiguous or hidden seeds require manual selection. With detection OFF, exact Xaero-ID checking is disabled, but account, profile, position, and recovery guards remain. Existing Xaero profiles without a known seed association may require manual selection. This is less reliable on networks with shared seeds. The switch affects the world identity used by Server Saves as well as SpectateFix; it does not disable the server plugin.
+
+When an initial spectate entry is blocked waiting for an ID, the English chat message points to this setting and plays the villager's negative-response sound. Commands during an already tracked session or while already in spectator mode pass through even while identity is unresolved, so staff can exit or change targets. Starting while already in spectator mode does not create a new origin.
 
 ### Server-specific behavior
 
-- PureFix observes commands, not your spectate plugin's internal state. A rejected spectate command still creates a saved return; an explicit exit pattern clears it even if the server rejects that command. Use **Forget** or adjust patterns to match your server's semantics. In particular, remove bare `/spectate` from exit patterns if it does not exit spectating on your server.
-- If your spectate plugin switches targets when `/s <player>` is repeated instead of exiting, the default toggle model will not match it. Configure command patterns for your actual enter/exit behavior before use.
+- PureFix observes commands and game-mode updates, not the server plugin's internal state. A rejected entry command still leaves a saved return. Use **Forget** if necessary. Repeated commands do not replace that original position.
+- Automatic exit detection requires an actual spectator-to-other-mode update. A plugin that only swaps inventory items or cameras without changing game mode cannot provide this signal. An unrelated game-mode change during a tracked spectator session also counts as an exit. Coordinates alone are not used as proof of exit.
 - Authentication plugins, a hub before backend connection, and anti-teleport rules can delay/reject the return. Increase the delay or Retry after login. Automatic retry loops are deliberately avoided.
 - CoreProtect may adjust the destination for safety. An adjustment beyond the two-block arrival tolerance leaves the return pending; inspect the result and use Forget if appropriate. Yaw/pitch and game mode are not changed or restored.
 - Full coordinate precision is stored locally. Commands use up to three decimal places (fewer near the world border) to fit CoreProtect's coordinate-token length limit.
@@ -148,7 +154,7 @@ Use JDK 25 or newer; the wrapper downloads Gradle 9.6.0.
 .\gradlew.bat runSmokeClient
 ```
 
-On Linux/macOS use `./gradlew clean build`. Output: `build/libs/purefix-1.1.0.jar`. The `-sources.jar` is source code, not the installable mod. `runSmokeClient` opens a development Minecraft client, checks menu navigation, Reset, packet observation, and mixin loading, saves screenshots in `run-smoke/screenshots`, and exits. The separate smoke-test mod is not included in the release jar.
+On Linux/macOS use `./gradlew clean build`. Output: `build/libs/purefix-1.2.0.jar`. The `-sources.jar` is source code, not the installable mod. `runSmokeClient` opens a development Minecraft client, checks menu navigation, Reset, packet observation, and mixin loading, saves screenshots in `run-smoke/screenshots`, and exits. The separate smoke-test mod is not included in the release jar.
 
 Automated tests cover parsing, command validation, persistence/restart, corruption handling, export, and recovery gating. See [testing notes](docs/TESTING.md) for the real-server acceptance checklist and verification limits.
 

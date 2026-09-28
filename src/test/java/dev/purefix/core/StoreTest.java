@@ -7,6 +7,21 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class StoreTest {
     @TempDir Path directory;
+    @Test void legacyDelayDefaultMigratesAndOtherDelaysSurvive() throws Exception {
+        for (int delay : new int[]{10, 0, 60}) {
+            Files.writeString(directory.resolve("purefix.json"), "{\"settings\":{\"joinDelayTicks\":" + delay + ",\"exitCommands\":[\"/s\"]}}");
+            Store migrated = new Store(directory); migrated.load();
+            assertTrue(migrated.available());
+            assertEquals(delay == 10 ? 0 : delay, migrated.data.settings.joinDelayTicks);
+            assertTrue(migrated.data.settings.mapModCompanionEnabled);
+            assertTrue(migrated.save());
+            assertFalse(Files.readString(migrated.path).contains("exitCommands"));
+        }
+        Store current = new Store(directory); current.load(); current.data.settings.joinDelayTicks = 10;
+        current.data.settings.mapModCompanionEnabled = false; assertTrue(current.save());
+        Store restart = new Store(directory); restart.load();
+        assertEquals(10, restart.data.settings.joinDelayTicks); assertFalse(restart.data.settings.mapModCompanionEnabled);
+    }
     @Test void upgradeUntouchedDefaultsButKeepCustomCommandLists() throws Exception {
         Store original = new Store(directory);
         original.data.settings.restoreCommands = new java.util.ArrayList<>(java.util.List.of("/inventoryrollback restore {player}", "/ir restore {player}"));

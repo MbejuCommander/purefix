@@ -48,12 +48,13 @@ public final class PureFixScreen extends MenuScreen {
     }
     private MenuScreen spectate(Screen parent) {
         MenuScreen result = menu(parent, "SpectateFix", "Saved returns | " + mod.detectionSummary(), s -> {
+            s.subtitle = "Saved returns | " + mod.detectionSummary();
             var c = mod.settings();
             toggle(s, "Enable SpectateFix", () -> c.spectateEnabled, v -> c.spectateEnabled = v);
             toggle(s, "Enderman teleport sound", () -> c.spectateSound, v -> c.spectateSound = v);
+            toggle(s, "MapModCompanion detection", () -> c.mapModCompanionEnabled, mod::setMapModCompanionEnabled);
             s.action("Check MapModCompanion", () -> { mod.checkMapModCompanion(); show(null); }, mod.multiplayer());
             s.action("Spectate command patterns", () -> show(patterns(s, "Spectate commands", c.spectateCommands, true)));
-            s.action("Exit command patterns", () -> show(patterns(s, "Exit commands", c.exitCommands, false)));
             s.action("Return teleport command", () -> textForm(s, "SpectateFix teleport", "Required: {world} {x} {y} {z}", c.spectateCommand, v -> { Rules.validateTemplate(v); c.spectateCommand = v; commit(); }));
             s.action("Join delay: " + c.joinDelayTicks + " ticks", () -> textForm(s, "Join delay", "Ticks after server position is received (0-1200)", Integer.toString(c.joinDelayTicks), v -> {
                 int n; try { n = Integer.parseInt(v); } catch (NumberFormatException e) { throw new IllegalArgumentException("Enter a whole number."); }
@@ -164,7 +165,7 @@ public final class PureFixScreen extends MenuScreen {
             s.action("Open this menu with /purefix or Mod Menu.", () -> {}, false);
             s.action("EnderFix: restore command > Player Data > backup > pearl.", () -> {}, false);
             s.action("SpectateFix saves before /s <player> or /spectate <player>.", () -> {}, false);
-            s.action("Repeating a spectate command clears the return point.", () -> {}, false);
+            s.action("Leaving spectator mode clears the saved return.", () -> {}, false);
             s.action("Xaero World Map IDs take priority over seed detection.", () -> {}, false);
             s.action("SpectateFix > Check MapModCompanion reports in chat.", () -> {}, false);
             s.action("Shared/hidden seeds need manual subserver selection.", () -> {}, false);
