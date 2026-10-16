@@ -30,6 +30,12 @@ public final class Store {
             // Upgrade only the untouched 1.0 default list; preserve deliberate user customizations.
             if (loaded.settings.restoreCommands.equals(java.util.List.of("/inventoryrollback restore {player}", "/ir restore {player}")))
                 loaded.settings.restoreCommands = new java.util.ArrayList<>(Data.DEFAULT_RESTORE_COMMANDS);
+            var settingsJson = json.getAsJsonObject().getAsJsonObject("settings");
+            if (settingsJson != null && (!settingsJson.has("donkeyDefaultsVersion") || loaded.settings.donkeyDefaultsVersion < 2)) {
+                if (Rules.command(loaded.settings.donkeyAlias).equals("shame {player}")) loaded.settings.donkeyAlias = Data.DEFAULT_DONKEY_ALIAS;
+                if (loaded.settings.donkeyDelayMs == 2000) loaded.settings.donkeyDelayMs = Data.DEFAULT_DONKEY_DELAY_MS;
+                loaded.settings.donkeyDefaultsVersion = 2;
+            }
             data = loaded;
         } catch (Exception e) { blocked = true; error = "Cannot load PureFix data. Original file preserved: " + e.getMessage(); }
     }

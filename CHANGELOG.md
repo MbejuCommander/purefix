@@ -1,5 +1,37 @@
 # Changelog
 
+## 1.4.1 - 2026-10-09
+
+- Set the default alias to `/donkey {player}` and the default transfer interval to 300 ms, including blank interval input. Migrate previous default values once while preserving custom values.
+
+- Register the configurable Donkey alias with the client command tree, including player-name completion and usage feedback for a missing target.
+- Refresh completions when the alias changes or Donkey is toggled. Internal server commands bypass the client alias, including when alias and inventory command share a name.
+- Add **InvSee++ placeholder filter**, default ON. Detect the plugin's exact lore marker and exclude placeholders before forming roulette bundles. Keep ordinary glass panes eligible and allow the filter to be disabled.
+- Stop with a clear message when filtering leaves no eligible items.
+- Retain the level-up notice after all winning slots are confirmed transferred, controlled by Roulette sounds.
+- Add command parsing/completion, alias lifecycle, placeholder recognition, migration, and filter-toggle checks.
+
+
+## 1.4.0 - 2026-10-09
+
+- Replace individual-slot spins with one winning color containing a complete random bundle of 15 occupied slots by default.
+- Prevent duplicate full combinations regardless of ordering or equivalent source stacks; retain overlap between different bundles. Cover eligible contents and adapt the number of sectors when fewer combinations exist or smaller bundles need more sectors.
+- Draw bundle items in each colored sector and show their full-size contents in the side panel on hover.
+- Set normal spin duration to 8 seconds. Add 1x-2x speed control that accelerates the animation and soundtrack together.
+- Include the supplied Dedsafio roulette audio as the default sound style, with the previous Minecraft sounds available as Classic. Stop owned audio on cancellation.
+- Keep sequential full-slot transfers and their independently configured interval. Add combination, coverage, speed, persistence, and client preview checks.
+
+
+## 1.3.0 - 2026-10-09
+
+- Add Donkey with a vanilla chest-carrying donkey icon, configurable enable switch, and offline roulette preview.
+- Capture an invsee chest inventory through the editable `/shame {player}` client alias and `/invsee {player}` server command.
+- Draw 15 distinct occupied slots by default, transferring each winning slot’s full contents. Add editable winner count, title recognition, and per-slot exclusions.
+- Animate item icons on a colorful wheel with slowing clicks, XP reveals, and a completion sound. Roulette sounds default ON and can be disabled.
+- Transfer winners sequentially with server confirmation and a configurable 2000 ms interval; blank input restores the default. Stop on changed inventories, insufficient space, cancellation, disconnect, or missing acknowledgement.
+- Add selection, timing, cancellation, timeout, and configuration tests plus real-client Donkey UI smoke coverage.
+
+
 ## 1.2.0 - 2026-09-27
 
 - Replace command-based exit confirmation with server game-mode events. A tracked session clears after spectator mode changes to a different mode, including when the observed player disconnects and the server restores survival.

@@ -58,8 +58,43 @@ public final class SmokeClient implements ClientModInitializer {
                     }
                     case 9 -> { shot(mc); press(mc, "Back"); press(mc, "Server Saves"); }
                     case 10 -> { shot(mc); press(mc, "Back"); press(mc, "Help & storage"); }
-                    case 11 -> { shot(mc); System.out.println("PUREFIX_SMOKE_PASS: shared Xaero decoder observation, mixins, themed menus, Reset, editor, SpectateFix, Server Saves."); }
-                    case 12 -> mc.stop();
+                    case 11 -> { shot(mc); press(mc, "Back"); press(mc, "Donkey"); }
+                    case 12 -> {
+                        shot(mc);
+                        boolean enabled = PureFix.INSTANCE.settings().donkeyEnabled;
+                        press(mc, "Enable Donkey: " + (enabled ? "ON" : "OFF"));
+                        if (PureFix.INSTANCE.settings().donkeyEnabled == enabled) throw new AssertionError("Donkey toggle failed");
+                        press(mc, "Enable Donkey: " + (enabled ? "OFF" : "ON"));
+                        boolean filter = PureFix.INSTANCE.settings().donkeyFilterInvsee;
+                        press(mc, "InvSee++ placeholder filter: " + (filter ? "ON" : "OFF"));
+                        if (PureFix.INSTANCE.settings().donkeyFilterInvsee == filter) throw new AssertionError("Placeholder filter toggle failed");
+                        press(mc, "InvSee++ placeholder filter: " + (filter ? "OFF" : "ON"));
+                        press(mc, "Preview roulette");
+                    }
+                    case 13 -> { shot(mc); press(mc, "Spin preview"); }
+                    case 14, 15, 16, 17, 18 -> shot(mc);
+                    case 19 -> { shot(mc); press(mc, "Back"); press(mc, ">"); }
+                    case 20 -> {
+                        boolean sounds = PureFix.INSTANCE.settings().donkeySound;
+                        press(mc, "Roulette sounds: " + (sounds ? "ON" : "OFF"));
+                        if (PureFix.INSTANCE.settings().donkeySound == sounds) throw new AssertionError("Donkey sounds toggle failed");
+                        press(mc, "Roulette sounds: " + (sounds ? "OFF" : "ON"));
+                        shot(mc);
+                        if (mc.getSoundManager().getSoundEvent(net.minecraft.resources.Identifier.fromNamespaceAndPath("purefix", "donkey.spin")) == null)
+                            throw new AssertionError("Donkey soundtrack missing");
+                        press(mc, "Sound style: Dedsafio");
+                        if (PureFix.INSTANCE.settings().donkeyOriginalSound) throw new AssertionError("Sound style switch failed");
+                        PureFix.INSTANCE.settings().donkeySpeed = 2;
+                        press(mc, "<"); press(mc, "Preview roulette");
+                    }
+                    case 21 -> press(mc, "Spin preview");
+                    case 22, 23 -> shot(mc);
+                    case 24 -> {
+                        shot(mc); press(mc, "Back"); press(mc, ">"); press(mc, "Sound style: Classic");
+                        PureFix.INSTANCE.settings().donkeySpeed = 1; PureFix.INSTANCE.save();
+                        System.out.println("PUREFIX_SMOKE_PASS: existing features, unique color bundles, 8-second soundtrack preview, classic 2x preview, settings and InvSee++ filter toggles.");
+                    }
+                    case 25 -> mc.stop();
                 }
             } catch (Throwable error) {
                 error.printStackTrace(); System.err.println("PUREFIX_SMOKE_FAIL"); mc.stop();

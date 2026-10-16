@@ -1,18 +1,50 @@
 # PureFix
 
-PureFix is an English-only, **client-side Fabric mod for Minecraft Java 26.3**. It helps multiplayer staff teleport from InventoryRollbackPlus backups and recover their position after disconnecting while spectating.
+PureFix is an English-only, **client-side Fabric mod for Minecraft Java 26.3**. It helps multiplayer staff teleport from InventoryRollbackPlus backups and recover their position after disconnecting while spectating, and draw random occupied inventory slots with Donkey.
 
 ![PureFix configuration menu](docs/images/main-menu.png)
+
+## Guide
+
+- [Install PureFix](#installation)
+- [Draw inventory bundles with Donkey](#donkey)
+- [Save servers and identify worlds](#server-saves)
+- [Use EnderFix](#enderfix)
+- [Use SpectateFix](#spectatefix)
+- [Find and recover local data](#local-data-and-recovery)
+- [Build from source on Windows 11](#build-from-source-on-windows-11)
+- [Troubleshoot common problems](#troubleshooting)
+- [Verify and contribute](#build-and-verification)
 
 ## Installation
 
 1. Install Minecraft **26.3**, Fabric Loader **0.19.5 or newer**, and Java **25 or newer**.
-2. Put `purefix-1.2.0.jar` in your Minecraft instance's `mods` folder. Remove the previous PureFix jar when upgrading; keep your configuration folder.
+2. Put `purefix-1.4.1.jar` in your Minecraft instance's `mods` folder. On a standard Windows launcher installation, this is `%APPDATA%\.minecraft\mods`; custom launchers may use a different instance folder. Remove the previous PureFix jar when upgrading; keep your configuration folder.
 3. Install **Fabric API for 26.3**. This release was built with `0.161.0+26.3`.
 4. Install **Mod Menu for 26.3** to access **Mods > PureFix > Configure**. This release was built with Mod Menu `21.0.0`. Mod Menu is optional: `/purefix` also opens the configuration while connected.
 5. Connect to your multiplayer server. PureFix is not installed on the server.
 
-The server must already provide CoreProtect and InventoryRollbackPlus and grant your account the relevant command permissions. PureFix sends normal commands using your account; it does not grant permissions or implement either plugin. SpectateFix assumes `/s` and `/spectate` are supplied by your server's staff/spectate plugin.
+Each feature uses the server tools relevant to it: EnderFix requires CoreProtect and InventoryRollbackPlus; SpectateFix requires CoreProtect plus the server's `/s` or `/spectate` command; Donkey requires an editable `/invsee` menu such as InvSee++. Your account needs the matching permissions. PureFix sends ordinary commands and inventory clicks using your account; it does not grant permissions or install server plugins.
+
+## Donkey
+
+![Donkey roulette](docs/images/donkey-roulette.png)
+
+Let fate pack the little donkey's chest! Open **Donkey** in the configuration menu, or run `/donkey <player>` in multiplayer. PureFix registers that client alias with Minecraft's command system and sends `/invsee <player>` to the server. Type `/donkey ` (with a trailing space) to see player-name suggestions, just as with other commands. Suggestions use the names available to your client; you can also type an offline name manually. Entering `/donkey` without a name shows usage instead of sending an incomplete command to the server. Editing the alias or toggling Donkey refreshes its command completions during the current connection. Upgrading migrates the previous `/shame {player}` and 2000 ms defaults once; customized values are preserved. You can subsequently choose either previous value again.
+
+1. The default recognized title is `{player}'s Inventory`, matching the supplied five-row menu. Edit **Inventory title** for a different server title. Chest menus with one to six rows are supported.
+2. **InvSee++ placeholder filter** defaults to ON. It removes items whose lore contains the exact line `InvSee++ placeholder`, ignoring formatting. This includes the colored pane placeholders and the plugin's alternative icon placeholders, while ordinary player-owned glass remains eligible. Turn the filter OFF in Donkey to include those marked items again. Review the captured inventory and click any remaining plugin controls to exclude them before spinning. Empty slots and your own inventory are excluded automatically; equipment slots shown by the plugin can participate.
+3. Each colored sector contains a complete random bundle of **15 distinct occupied slots** by default. Sectors may share some items, but the same complete combination cannot appear twice, even in a different order or using equivalent stacks from different slots. Stack identity includes item components and count. All eligible stack contents are represented across the wheel. Normally there are up to eight sectors; small bundle sizes can require more to cover the inventory. If only one combination exists, the wheel has one sector.
+4. Hover a color to inspect its full bundle. The wheel draws the items inside each sector; the side panel shows them at inventory size. Click **Spin & transfer** for one **8-second spin** that selects one color and its entire bundle. If fewer eligible slots exist than the configured bundle size, the single bundle contains all of them.
+5. After the spin, the winning slots are moved to your inventory one at a time. Every item in each slot is taken: 64 diamonds in one slot count as one slot. The default interval is **300 ms after the previous transfer is confirmed**. Blank interval input restores 300 ms. Zero still waits for each server confirmation.
+
+**Enable Donkey** and **Roulette sounds** default to ON. **Sound style: Dedsafio** uses the supplied roulette recording by default; switch to **Classic** for the previous Minecraft click/XP style. **Spin speed** accepts 1 to 2, including decimals: 1x = 8 seconds, 1.5x = about 5.33 seconds, and 2x = 4 seconds. Blank speed input restores 1x. Playback speed and pitch increase with the animation. Closing or cancelling the wheel stops its soundtrack. Acceleration does not change the transfer interval. A Minecraft level-up sound also confirms when all winning slots have finished transferring; **Roulette sounds: OFF** mutes that completion notice as well.
+
+The menu also edits **Slots per color** (1-54), the client alias, the server command, and the inventory title. Both commands require `{player}`. **Preview roulette** uses the same duration, speed, and sound settings offline without moving items. The supplied sound's provenance and conversion are documented in [audio notes](docs/AUDIO.md).
+
+The server must provide an editable invsee inventory and grant your staff account permission to take items. PureFix sends normal shift-click requests; it cannot bypass permissions. A changed winning item, full inventory, disconnect, closed menu, rejected/partial move, or missing server confirmation stops the queue. Completed transfers remain; an already-sent click may still finish after cancellation. Interrupted draws are never replayed on reconnect. Losing items are left untouched: Donkey does not clear the target's inventory or ban anyone.
+
+The supplied video shows InvSee++ placeholders, but live transfers on your server have not been verified. Check the slot exclusions and try a test inventory before using Donkey for moderation. Automated queue tests and the offline client preview are covered in [verification notes](docs/TESTING.md).
 
 ## Server Saves
 
@@ -144,17 +176,49 @@ If the JSON is malformed or uses an unsupported schema, PureFix preserves it, re
 
 The data includes server addresses, player UUIDs, and staff return locations. Keep it local when sharing screenshots or modpacks. PureFix has no telemetry or external service.
 
+## Build from source on Windows 11
+
+1. Download this repository with **Code > Download ZIP** on GitHub, or clone it with Git. Extract it to a normal folder. Keep the `gradle/wrapper` directory and both `gradlew` files.
+2. Install **JDK 25**. Open PowerShell inside the extracted project folder. Check that `java -version` reports Java 25, or set `JAVA_HOME` to your JDK 25 folder. For example, if that folder exists on your computer:
+
+   ```powershell
+   $env:JAVA_HOME = 'C:\Program Files\Java\jdk-25.0.4'
+   ```
+
+3. Build the mod with the included Gradle wrapper:
+
+   ```powershell
+   .\gradlew.bat clean build
+   ```
+
+4. Install **`build/libs/purefix-1.4.1.jar`** in your Minecraft instance's `mods` folder. The `-sources.jar` is for reading source code and is not an installable mod. Install Fabric API and, if you want the Mods configuration button, Mod Menu as described in [Installation](#installation).
+
+The first build needs an internet connection to download Gradle and the Minecraft/Fabric dependencies. Windows PowerShell accepts the commands above as written; Command Prompt uses `gradlew.bat clean build` without `./` or `.\`. GitHub's downloaded project ZIP is source code, while the release `.jar` is the installable mod.
+
+## Troubleshooting
+
+| Symptom | Check |
+| --- | --- |
+| `/donkey` previously showed “Unknown or incomplete command” | Install the latest PureFix jar, remove older PureFix jars, and reconnect. Enter `/donkey ` with a trailing space to see online names; type an offline name yourself. `/donkey` alone displays usage. |
+| `/donkey <player>` does not open an inventory | Confirm your account can run `/invsee <player>` on that server and that **Donkey > Server command** matches its command. |
+| “Inventory not recognized” | Set **Donkey > Inventory title** to the server's exact inventory title, keeping `{player}`. |
+| InvSee++ colored panes appear on the wheel | Turn **InvSee++ placeholder filter** ON. It recognizes the plugin's `InvSee++ placeholder` lore line. Click other plugin control items in the review screen to exclude them. |
+| “No eligible inventory items” | The visible contents are empty or all marked placeholders. Turn the filter OFF only if you deliberately want those marked items included. |
+| A winning stack does not transfer | Check InvSee++ edit permission and space in your own inventory. PureFix stops after a rejected, changed, partial, or unconfirmed move; inspect both inventories before another draw. |
+| No roulette or completion sound | Turn **Roulette sounds** ON and check Minecraft's sound volume. Choose **Dedsafio** or **Classic** under **Sound style**. |
+| Build fails before downloading dependencies | Check your connection and use JDK 25 or 26. Gradle 9.6.0 in this project cannot run on JDK 27. |
+
 ## Build and verification
 
-Use JDK 25 or newer; the wrapper downloads Gradle 9.6.0.
+Use JDK 25 (tested) or JDK 26; the wrapper downloads Gradle 9.6.0. Set `JAVA_HOME` explicitly if your default Java is 27, which this Gradle version cannot run on.
 
 ```powershell
-# Point JAVA_HOME at your installed JDK 25+ if your default Java is older.
-.\gradlew.bat clean build
+# Optional after building: run automated tests and the development client.
+.\gradlew.bat test
 .\gradlew.bat runSmokeClient
 ```
 
-On Linux/macOS use `./gradlew clean build`. Output: `build/libs/purefix-1.2.0.jar`. The `-sources.jar` is source code, not the installable mod. `runSmokeClient` opens a development Minecraft client, checks menu navigation, Reset, packet observation, and mixin loading, saves screenshots in `run-smoke/screenshots`, and exits. The separate smoke-test mod is not included in the release jar.
+On Linux/macOS use `./gradlew clean build`. Output: `build/libs/purefix-1.4.1.jar`. The `-sources.jar` is source code, not the installable mod. `runSmokeClient` opens a development Minecraft client, checks menu navigation, Reset, packet observation, and mixin loading, saves screenshots in `run-smoke/screenshots`, and exits. The separate smoke-test mod is not included in the release jar.
 
 Automated tests cover parsing, command validation, persistence/restart, corruption handling, export, and recovery gating. See [testing notes](docs/TESTING.md) for the real-server acceptance checklist and verification limits.
 

@@ -1,6 +1,17 @@
 # Verification
 
-## Verified build: 1.2.0 (2026-09-27)
+## Verified build: 1.4.1 (2026-10-09)
+
+- Java 25 build and 59 automated tests cover existing features plus unique full-bundle combinations, equivalent stack identities, inventory coverage, small inventories, 8-second duration and speed limits, delay validation, wheel landing geometry, transfer acknowledgement and pacing, cancellation, disconnects, timeout without retry, partial-move rejection, and persisted Donkey settings.
+- Real Minecraft client smoke exercises the Donkey menu, vanilla donkey-with-chest renderer, rotating bundle wheel, enable toggle, sound toggle, Dedsafio soundtrack registration, normal 8-second preview, and Classic preview at 2x. UI screenshots were visually inspected.
+- Command tests cover bare-alias usage, player-name suggestions and prefix matching, manually entered offline names, one execution per target, changed/nested aliases, and disabling the command. Placeholder tests cover formatting, exact lore recognition, ordinary glass, unrelated lore, and persistent ON/OFF settings. The client smoke also toggles the new filter.
+- Live transfers with the user's invsee plugin remain unverified. The queue is tested with simulated server acknowledgements; the preview does not transfer inventory.
+
+### Donkey server acceptance
+
+Type `/donkey ` and verify player suggestions. Change the alias, then toggle Donkey OFF and ON without reconnecting; verify the suggestions follow the current setting. Use a test target with known item counts. Confirm marked InvSee++ panes are absent with the filter ON, ordinary glass is retained, and the marked panes return with the filter OFF. An inventory containing only placeholders should report no eligible items. Run `/donkey <player>`, exclude any plugin controls, and select a color containing 15 occupied slots. Verify every color contains a distinct full combination, the chosen bundle matches the visible winner, and the normal spin lasts eight seconds. Repeat at 2x and confirm both the soundtrack and animation take four seconds. Verify full source-slot contents arrive, no source slot is selected twice, the remaining slots are unchanged, and subsequent moves wait 300 ms after confirmation. Repeat with fewer than 15 slots, two slots of identical items, equipment, a full staff inventory, a changing target inventory, read-only invsee permissions, cancellation, disconnect, and sounds OFF. Verify no interrupted queue resumes after reconnect.
+
+## Historical verification: 1.2.0 (2026-09-27)
 
 - `test build`: passed, **35 tests**, zero failures/errors.
 - Real development client: Minecraft 26.3, Fabric Loader 0.19.5, Fabric API 0.161.0+26.3, Mod Menu 21.0.0.

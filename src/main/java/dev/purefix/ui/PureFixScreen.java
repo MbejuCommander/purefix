@@ -12,11 +12,50 @@ public final class PureFixScreen extends MenuScreen {
     @Override protected void populate() {
         card("EnderFix", "Backup teleports", Theme.Icon.PEARL, Theme.PEARL, () -> show(ender(this)));
         card("SpectateFix", "Return to safety", Theme.Icon.PLAYER, Theme.SPECTATE, () -> show(spectate(this)));
+        card("Donkey", "Let fate pack the loot!", Theme.Icon.DONKEY, Theme.GOLD, () -> show(donkey(this)));
         card("Server Saves", "Worlds & profiles", Theme.Icon.COMPASS, Theme.GOLD, () -> show(servers(this)));
         card("Help & storage", "Guide & local data", Theme.Icon.BOOK, 0xFF91B9CC, () -> show(help(this)));
         if (!mod.store.error.isBlank()) action("Storage error: " + mod.store.error, () -> {}, false);
     }
     private String state(boolean enabled) { return enabled ? "ON" : "OFF"; }
+    private MenuScreen donkey(Screen parent) {
+        MenuScreen result = menu(parent, "Donkey", "Let fate pack the little donkey's chest!", s -> {
+            var c = mod.settings();
+            toggle(s, "Enable Donkey", () -> c.donkeyEnabled, v -> c.donkeyEnabled = v);
+            toggle(s, "InvSee++ placeholder filter", () -> c.donkeyFilterInvsee, v -> c.donkeyFilterInvsee = v);
+            s.action("Open player inventory", () -> textForm(s, "Donkey player", "Player name", "", mod.donkey::start), mod.multiplayer());
+            s.action("Preview roulette", () -> show(DonkeyScreen.preview(s)));
+            s.action("Slots per color: " + c.donkeyWinners, () -> textForm(s, "Slots per color", "Occupied inventory slots (1-54)", Integer.toString(c.donkeyWinners), value -> {
+                int count; try { count = Integer.parseInt(value.strip()); } catch (NumberFormatException e) { throw new IllegalArgumentException("Enter a whole number from 1 to 54."); }
+                if (count < 1 || count > 54) throw new IllegalArgumentException("Use 1 to 54 winning slots.");
+                c.donkeyWinners = count; commit();
+            }));
+            s.action("Transfer interval: " + c.donkeyDelayMs + " ms", () -> textForm(s, "Transfer interval", "Milliseconds; blank = 300", Long.toString(c.donkeyDelayMs), value -> {
+                c.donkeyDelayMs = DonkeyRules.delay(value); commit();
+            }));
+            toggle(s, "Roulette sounds", () -> c.donkeySound, v -> c.donkeySound = v);
+            s.action("Sound style: " + (c.donkeyOriginalSound ? "Dedsafio" : "Classic"), () -> {
+                c.donkeyOriginalSound = !c.donkeyOriginalSound; commit(); s.refresh();
+            });
+            s.action("Spin speed: " + c.donkeySpeed + "x", () -> textForm(s, "Spin speed", "1 = 8s; 2 = 4s (range 1-2)", Double.toString(c.donkeySpeed), value -> {
+                double speed;
+                try { speed = value.isBlank() ? 1 : Double.parseDouble(value.strip()); }
+                catch (NumberFormatException e) { throw new IllegalArgumentException("Use a speed from 1 to 2."); }
+                DonkeyRules.duration(speed); c.donkeySpeed = speed; commit();
+            }));
+            s.action("Alias: " + c.donkeyAlias, () -> textForm(s, "Donkey alias", "Client command; requires {player}", c.donkeyAlias, value -> {
+                Rules.validateTrigger(value, true); c.donkeyAlias = value.strip(); commit();
+            }));
+            s.action("Server command: " + c.donkeyCommand, () -> textForm(s, "Inventory command", "Server command; requires {player}", c.donkeyCommand, value -> {
+                Rules.validateTrigger(value, true); c.donkeyCommand = value.strip(); commit();
+            }));
+            s.action("Inventory title", () -> textForm(s, "Inventory title", "Exact title; requires {player}", c.donkeyTitle, value -> {
+                if (!value.contains("{player}") || value.isBlank()) throw new IllegalArgumentException("Include {player} in the inventory title.");
+                c.donkeyTitle = value.strip(); commit();
+            }));
+        });
+        result.icon = Theme.Icon.DONKEY; result.accent = Theme.GOLD; return result;
+    }
     private void commit() { if (!mod.save()) throw new IllegalArgumentException(mod.store.error); }
     private MenuScreen menu(Screen parent, String title, String subtitle, Consumer<MenuScreen> populate) {
         MenuScreen result = new MenuScreen(parent, title) {

@@ -41,3 +41,19 @@ MapModCompanion detection defaults ON. When OFF, identity uses the current seed 
 Identity, account, dimension, readiness, and retry gates are covered by `RecoveryPolicyTest`. Server command replies are not parsed as success because they vary by plugin/version/language. Arrival instead requires a new server correction and proximity in the original dimension/profile. This proves observed arrival, not the server's internal plugin state.
 
 The [CoreProtect implementation](https://github.com/PlayPro/CoreProtect/blob/master/src/main/java/net/coreprotect/command/TeleportCommand.java) accepts separate world/X/Y/Z arguments, rejects coordinate strings with 12 or more characters, throttles teleports, and may choose a safe nearby destination. Command formatting and the one-attempt policy account for these constraints.
+
+
+## Donkey inventory lifecycle
+
+The client alias arms a ten-second wait for the configured chest title. A stable snapshot of the top container slots is captured; the staff inventory is never in the draw. Review permits excluding plugin controls. SecureRandom creates bundles of distinct occupied source slots, then chooses one bundle uniformly from the displayed sectors. Sectors can overlap. A canonical multiset of full-stack identities prevents duplicate combinations, including reordered stacks and equivalent contents in different source slots. Coverage bundles are generated first; additional random bundles fill up to eight sectors, or more if small bundle sizes require them. Bounded random sampling is followed by enumeration over item-type counts, avoiding an unbounded retry loop when only a few combinations exist. With no alternatives, only one sector is shown. Item counts and components remain intact.
+
+One spin lasts 8000 / speed milliseconds, where speed is between 1 and 2. The eight-second Ogg recording plays at the same speed through Minecraft's UI sound pitch; the multiplier stays within its supported range. The classic sound style uses sector crossings and a shortened minimum click interval. The preview and live wheel share the grouping rules, duration calculation, and audio helper. Audio stops when the wheel completes or is removed.
+
+Transfers use one ordinary QUICK_MOVE packet at a time with no local predicted inventory changes. Server-observed source removal and an increased matching staff inventory count acknowledge the full stack. The next click waits the configured interval after acknowledgement. A ten-second timeout stops rather than retries; slot contents, menu identity, connection, available capacity, and cursor state are checked. This is not an atomic server transaction: plugins can reject or partially apply clicks, and already-sent clicks can complete after cancellation. The transient draw is not persisted or replayed. No losing inventory is deleted.
+
+
+### Donkey command completion and InvSee++ placeholders
+
+Donkey registers literal alias tokens plus a Brigadier player-name argument through Fabric's client command callback. Completion uses the client's online-name provider. Alias paths have dynamic requirements; settings changes register the new path and refresh Fabric's combined command tree. Old paths become unavailable, and internal backend commands do not execute client aliases recursively. The existing outgoing-command hook remains a fallback.
+
+InvSee++ marks its placeholder panes and icons with the lore line `InvSee++ placeholder`: see the [upstream placeholder builder](https://github.com/Jannyboy11/InvSee-plus-plus/blob/master/InvSee%2B%2B_Common/src/main/java/com/janboerman/invsee/spigot/internal/placeholder/Placeholders.java). PureFix removes formatting and matches that full line before capturing candidate slots. It does not filter by material or slot position. Custom server placeholders that remove/change the marker still need manual exclusion. The supplied video shows the standard marker on the pane tooltips.

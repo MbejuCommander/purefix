@@ -1,6 +1,8 @@
 package dev.purefix;
 
 import dev.purefix.core.*;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
+import net.minecraft.commands.SharedSuggestionProvider;
 import dev.purefix.ui.PureFixScreen;
 import dev.purefix.network.XaeroNetworking;
 import net.fabricmc.api.ClientModInitializer;
@@ -24,6 +26,7 @@ import static net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal;
 
 public final class PureFix implements ClientModInitializer {
     public static PureFix INSTANCE;
+    public final dev.purefix.donkey.DonkeyController donkey = new dev.purefix.donkey.DonkeyController(this);
     public final Store store = new Store(FabricLoader.getInstance().getConfigDir().resolve("purefix"));
     private final Minecraft mc = Minecraft.getInstance();
     private final WorldIdentity identity = new WorldIdentity();
@@ -36,6 +39,8 @@ public final class PureFix implements ClientModInitializer {
     private Data.Pending awaiting;
     private long awaitingDeadline, positionSerial, awaitingPositionSerial;
     private boolean openMenu;
+    private String registeredDonkeyAlias;
+    private boolean registeredDonkeyEnabled;
 
     @Override public void onInitializeClient() {
         INSTANCE = this; store.load(); XaeroNetworking.register();
@@ -46,8 +51,20 @@ public final class PureFix implements ClientModInitializer {
             if (!store.error.isBlank()) message(store.error);
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> resetConnection());
-        ClientCommandRegistrationCallback.EVENT.register((dispatcher, access) -> dispatcher.register(literal("purefix")
-            .executes(context -> { openMenu = true; return 1; })));
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, access) -> {
+            dispatcher.register(literal("purefix").executes(context -> { openMenu = true; return 1; }));
+            registerDonkeyCommand(dispatcher);
+        });
+    }
+    private void registerDonkeyCommand(com.mojang.brigadier.CommandDispatcher<net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource> dispatcher) {
+        registeredDonkeyAlias = settings().donkeyAlias; registeredDonkeyEnabled = settings().donkeyEnabled;
+        if (!store.available()) return;
+        DonkeyCommands.register(dispatcher, registeredDonkeyAlias,
+            (context, builder) -> SharedSuggestionProvider.suggest(context.getSource().getOnlinePlayerNames(), builder),
+            player -> { try { donkey.start(player); } catch (IllegalArgumentException e) { message(e.getMessage()); } },
+            () -> message("Usage: " + settings().donkeyAlias.replace("{player}", "<player>") + ". Type a space after the command to see player suggestions."),
+            prefix -> !internalCommand && settings().donkeyEnabled && store.available()
+                && (Rules.command(settings().donkeyAlias).equals(prefix) || Rules.command(settings().donkeyAlias).startsWith(prefix + " ")));
     }
     public Data.Settings settings() { return store.data.settings; }
     public boolean multiplayer() { return mc.player != null && mc.level != null && mc.getConnection() != null && !mc.isLocalServer() && mc.getCurrentServer() != null; }
@@ -57,8 +74,21 @@ public final class PureFix implements ClientModInitializer {
     public String fingerprint() { return fingerprint; }
     public String account() { return mc.player == null ? "" : mc.player.getUUID().toString(); }
     public void message(String text) { if (mc.player != null) mc.player.sendSystemMessage(Component.literal("[PureFix] " + text)); }
-    public boolean save() { boolean ok = store.save(); if (!ok) message(store.error); return ok; }
+    public boolean save() {
+        boolean ok = store.save();
+        if (!ok) message(store.error);
+        else if (mc.getConnection() != null && (registeredDonkeyEnabled != settings().donkeyEnabled
+                || !Objects.equals(registeredDonkeyAlias, settings().donkeyAlias))) {
+            try {
+                var dispatcher = ClientCommands.getActiveDispatcher();
+                if (dispatcher != null) { registerDonkeyCommand(dispatcher); ClientCommands.refreshCommandCompletions(); }
+            }
+            catch (IllegalStateException notReady) { /* The first server command packet registers the current settings. */ }
+        }
+        return ok;
+    }
     private void resetConnection() {
+        donkey.disconnect();
         identity.reset();
         session.reset();
         fingerprint = ""; selectedId = ""; lastCapture = ""; eligible.clear(); attempted.clear();
@@ -170,6 +200,7 @@ public final class PureFix implements ClientModInitializer {
     /** Called before vanilla sends the command. False cancels only an unsafe, unsaved spectate entry. */
     public boolean outgoing(String command) {
         if (internalCommand || !multiplayer()) return true;
+        if (donkey.intercept(command)) return false;
         if (settings().enderEnabled && settings().restoreCommands.stream().anyMatch(p -> Rules.matches(p, command))) {
             restoreDeadline = tick + 2400; menuVerified = false; closedTicks = 0;
         }
@@ -233,6 +264,7 @@ public final class PureFix implements ClientModInitializer {
     }
     private void tick() {
         tick++;
+        donkey.tick();
         if (openMenu) { openMenu = false; mc.setScreenAndShow(new PureFixScreen(null)); }
         if (!multiplayer() || !store.available()) return;
         updateIdentity();
@@ -311,6 +343,7 @@ public final class PureFix implements ClientModInitializer {
         internalCommand = true;
         try { mc.getConnection().sendCommand(command); } finally { internalCommand = false; }
     }
+    public void sendServerCommand(String command) { send(command); }
     private void sound() {
         mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.ENDERMAN_TELEPORT, 1f));
     }

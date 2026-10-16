@@ -62,7 +62,7 @@ public class MenuScreen extends Screen {
         if (icon != Theme.Icon.NONE) Theme.icon(g, icon, start, 20, 16);
         g.text(font, heading, start + (icon == Theme.Icon.NONE ? 0 : 23), 24, Theme.TEXT);
         g.centeredText(font, font.plainSubstrByWidth(subtitle, panelWidth - 30), width / 2, 42, Theme.MUTED);
-        g.centeredText(font, pages > 1 ? "Page " + (page + 1) + " / " + pages : dashboard ? "PUREFIX  /  1.2.0" : "PUREFIX", width / 2, height - 15, 0xFF8E9A97);
+        g.centeredText(font, pages > 1 ? "Page " + (page + 1) + " / " + pages : dashboard ? "PUREFIX  /  1.4.1" : "PUREFIX", width / 2, height - 15, 0xFF8E9A97);
     }
     @Override public void onClose() { show(parent); }
     @Override public boolean isPauseScreen() { return false; }

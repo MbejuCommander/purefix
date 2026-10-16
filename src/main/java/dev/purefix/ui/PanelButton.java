@@ -6,7 +6,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.network.chat.Component;
 
-final class PanelButton extends Button {
+class PanelButton extends Button {
     private final int accent;
     private final Theme.Icon icon;
     private final String description;

@@ -9,7 +9,7 @@ import net.minecraft.resources.Identifier;
 public final class Theme {
     public static final int PEARL = 0xFF65D6B3, SPECTATE = 0xFFB5A0E0, GOLD = 0xFFE2C07A;
     public static final int TEXT = 0xFFE5E8E4, MUTED = 0xFFA8B5B8;
-    public enum Icon { NONE, PEARL, PLAYER, COMPASS, BOOK }
+    public enum Icon { NONE, PEARL, PLAYER, COMPASS, BOOK, DONKEY }
     private Theme() {}
     public static void bevel(GuiGraphicsExtractor g, int x, int y, int w, int h, int fill, int light, int dark) {
         g.fill(x, y, x + w, y + h, fill);
@@ -28,6 +28,17 @@ public final class Theme {
     }
     public static void icon(GuiGraphicsExtractor g, Icon icon, int x, int y, int size) {
         if (icon == Icon.NONE) return;
+        if (icon == Icon.DONKEY) {
+            var state = new net.minecraft.client.renderer.entity.state.DonkeyRenderState();
+            state.entityType = net.minecraft.world.entity.EntityTypes.DONKEY;
+            state.hasChest = true; state.scale = 1; state.ageScale = 1;
+            state.boundingBoxHeight = 1.5f; state.boundingBoxWidth = 1.4f;
+            state.lightCoords = 15728880;
+            state.pose = net.minecraft.world.entity.Pose.STANDING;
+            g.entity(state, size * .55f, new org.joml.Vector3f(0, .75f, 0),
+                new org.joml.Quaternionf().rotationZ((float)Math.PI).rotateY(.7f), null, x, y, x + size, y + size);
+            return;
+        }
         if (icon == Icon.PLAYER) {
             var player = Minecraft.getInstance().player;
             Identifier texture = player == null ? Identifier.withDefaultNamespace("textures/entity/player/wide/steve.png")

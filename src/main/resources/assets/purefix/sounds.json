@@ -1,0 +1,10 @@
+{
+  "donkey.spin": {
+    "sounds": [
+      {
+        "name": "purefix:donkey_spin",
+        "stream": false
+      }
+    ]
+  }
+}

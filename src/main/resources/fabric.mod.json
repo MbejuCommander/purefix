@@ -3,7 +3,7 @@
   "id": "purefix",
   "version": "${version}",
   "name": "PureFix",
-  "description": "Client-side recovery tools for multiplayer staff: EnderFix, SpectateFix, and local server saves.",
+  "description": "Client-side staff tools: EnderFix, SpectateFix, Donkey inventory roulette, and local server saves.",
   "authors": ["PureFix"],
   "license": "MIT",
   "environment": "client",

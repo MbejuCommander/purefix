@@ -1,7 +1,7 @@
 plugins {
     id 'net.fabricmc.fabric-loom' version '1.17.21'
 }
-version = '1.2.0'
+version = '1.4.1'
 group = 'dev.purefix'
 repositories { maven { url = 'https://maven.terraformersmc.com/releases/' }; mavenCentral() }
 dependencies {

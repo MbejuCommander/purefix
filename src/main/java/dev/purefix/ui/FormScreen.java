@@ -28,7 +28,7 @@ public final class FormScreen extends Screen {
             box.setMaxLength(256); box.setValue(values[i]); boxes.add(addRenderableWidget(box));
         }
         addRenderableWidget(new PanelButton(width / 2 - 112, height - 39, 108, 20, "Save", "", Theme.Icon.NONE, accent, () -> {
-            try { commit.accept(boxes.stream().map(EditBox::getValue).map(String::strip).toList()); onClose(); }
+            try { commit.accept(boxes.stream().map(EditBox::getValue).map(String::strip).toList()); if (minecraft.gui.screen() == this) onClose(); }
             catch (Exception e) { error = e.getMessage() == null ? "Unable to save." : e.getMessage(); }
         }));
         addRenderableWidget(new PanelButton(width / 2 + 4, height - 39, 108, 20, "Cancel", "", Theme.Icon.NONE, accent, this::onClose));

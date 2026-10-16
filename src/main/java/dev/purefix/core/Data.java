@@ -3,6 +3,8 @@ package dev.purefix.core;
 import java.util.*;
 
 public final class Data {
+    public static final String DEFAULT_DONKEY_ALIAS = "/donkey {player}";
+    public static final long DEFAULT_DONKEY_DELAY_MS = 300;
     public static final List<String> DEFAULT_RESTORE_COMMANDS = List.of(
         "/ir restore {player}", "/irp restore {player}", "/inventoryrollback restore {player}");
     public int schemaVersion = 1;
@@ -14,6 +16,15 @@ public final class Data {
     public static class Settings {
         public boolean autoCapture = true, enderEnabled = true, enderSound = true, spectateEnabled = true, spectateSound = true;
         public boolean mapModCompanionEnabled = true;
+        public boolean donkeyEnabled = true, donkeySound = true;
+        public String donkeyAlias = DEFAULT_DONKEY_ALIAS, donkeyCommand = "/invsee {player}";
+        public String donkeyTitle = "{player}'s Inventory";
+        public int donkeyWinners = 15;
+        public long donkeyDelayMs = DEFAULT_DONKEY_DELAY_MS;
+        public int donkeyDefaultsVersion = 2;
+        public boolean donkeyOriginalSound = true;
+        public boolean donkeyFilterInvsee = true;
+        public double donkeySpeed = 1;
         public String enderCommand = Rules.TELEPORT, spectateCommand = Rules.TELEPORT;
         public List<String> restoreCommands = new ArrayList<>(DEFAULT_RESTORE_COMMANDS);
         public List<String> spectateCommands = new ArrayList<>(List.of("/s {player}", "/spectate {player}"));
@@ -43,6 +54,10 @@ public final class Data {
         if (schemaVersion != 1 || settings == null || servers == null || pending == null || ignored == null || xaeroNetworks == null)
             throw new IllegalArgumentException("Unsupported or incomplete PureFix data.");
         Rules.validateTemplate(settings.enderCommand); Rules.validateTemplate(settings.spectateCommand);
+        DonkeyRules.duration(settings.donkeySpeed);
+        Rules.validateTrigger(settings.donkeyAlias, true); Rules.validateTrigger(settings.donkeyCommand, true);
+        if (settings.donkeyWinners < 1 || settings.donkeyWinners > 54 || settings.donkeyDelayMs < 0
+            || settings.donkeyTitle == null || !settings.donkeyTitle.contains("{player}")) throw new IllegalArgumentException("Invalid Donkey settings.");
         for (String s : settings.restoreCommands) Rules.validateTrigger(s, true);
         for (String s : settings.spectateCommands) Rules.validateTrigger(s, true);
         if (settings.playerDataTitle == null || settings.backupTitle == null || settings.pearlTitle == null
